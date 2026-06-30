@@ -1,0 +1,123 @@
+flowchart TB
+
+    %% =========================
+    %% Users & Identity
+    %% =========================
+
+    User[Пользователь]
+
+    Keycloak[Keycloak<br/>SSO / Authentication / Authorization<br/>Роли и группы]
+
+    User --> Keycloak
+
+    %% =========================
+    %% Applications
+    %% =========================
+
+    subgraph Applications["Корпоративные сервисы"]
+        Portal[Веб-портал]
+        Nextcloud[Nextcloud]
+        FutureApps[Будущие приложения<br/>Mobile / Desktop / API]
+    end
+
+    Keycloak --> Portal
+    Keycloak --> Nextcloud
+    Keycloak --> FutureApps
+
+    %% =========================
+    %% AI Layer
+    %% =========================
+
+    Portal --> AIAgent
+
+    AIAgent[AI Chat Agent<br/>Function Calling]
+
+    AIAgent --> PolicyEngine
+
+    PolicyEngine[RBAC / ABAC Engine<br/>Проверка ролей и групп]
+
+    PolicyEngine <-->|OIDC Claims| Keycloak
+
+    %% =========================
+    %% Security Gateway
+    %% =========================
+
+    PolicyEngine --> SecurityGateway
+
+    SecurityGateway[Security Gateway / Access Broker<br/><br/>- Проверка уровня допуска<br/>- Ограничение Function Calls<br/>- Маршрутизация запросов<br/>- Аудит действий<br/>- Изоляция контуров]
+
+    Audit[(Audit Logs)]
+
+    SecurityGateway --> Audit
+
+    %% =========================
+    %% Security Domains
+    %% =========================
+
+    subgraph L1["Уровень 1 - Публичная информация"]
+        DB1[(Public DB)]
+        Q1[(Qdrant Public)]
+        M1[LLM Public]
+    end
+
+    subgraph L2["Уровень 2 - Коммерческая информация"]
+        DB2[(Commercial DB)]
+        Q2[(Qdrant Commercial)]
+        M2[LLM Commercial]
+    end
+
+    subgraph L3["Уровень 3 - R&D"]
+        DB3[(R&D DB)]
+        Q3[(Qdrant R&D)]
+        M3[LLM R&D]
+    end
+
+    %% =========================
+    %% Access Paths
+    %% =========================
+
+    SecurityGateway --> DB1
+    SecurityGateway --> Q1
+    SecurityGateway --> M1
+
+    SecurityGateway --> DB2
+    SecurityGateway --> Q2
+    SecurityGateway --> M2
+
+    SecurityGateway --> DB3
+    SecurityGateway --> Q3
+    SecurityGateway --> M3
+
+    %% =========================
+    %% RAG Isolation
+    %% =========================
+
+    M1 <--> Q1
+    M2 <--> Q2
+    M3 <--> Q3
+
+    %% =========================
+    %% Content Sources
+    %% =========================
+
+    Nextcloud --> DB1
+    Nextcloud --> DB2
+    Nextcloud --> DB3
+
+    Portal --> DB1
+    Portal --> DB2
+    Portal --> DB3
+
+    %% =========================
+    %% Trust Boundaries
+    %% =========================
+
+    classDef public fill:#d5f5d5
+    classDef commercial fill:#fff2cc
+    classDef rnd fill:#f4cccc
+    classDef security fill:#d9e2f3
+
+    class DB1,Q1,M1 public
+    class DB2,Q2,M2 commercial
+    class DB3,Q3,M3 rnd
+    class SecurityGateway,PolicyEngine,Audit security
